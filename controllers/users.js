@@ -5,6 +5,7 @@ require('dotenv').config();
 const NotFoundError = require('../errors/not-found-err');
 const ConflictError = require('../errors/conflict');
 const BadRequestError = require('../errors/badrequest');
+const BISSecret = require('../utils/utils');
 
 const { NODE_ENV, JWT_SECRET } = process.env;
 
@@ -31,11 +32,19 @@ module.exports.getCurrentUser = (req, res, next) => {
 module.exports.newUser = (req, res, next) => {
   const { name, email } = req.body;
 
-  User.findByIdAndUpdate(
-    req.user._id,
-    { name, email },
-    { new: true, runValidators: true, upsert: true },
-  )
+  User.findOne({ email })
+    .then((user) => {
+      if (user) {
+        throw new ConflictError(
+          'Пользователь с указанным email уже существует',
+        );
+      }
+      return User.findByIdAndUpdate(
+        req.user._id,
+        { name, email },
+        { new: true, runValidators: true, upsert: true },
+      );
+    })
     .then((user) => {
       if (!user) {
         throw new NotFoundError('Пользователь по указанному _id не найден.');
@@ -64,7 +73,7 @@ module.exports.login = (req, res) => {
       }
       const token = jwt.sign(
         { _id: user._id },
-        NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret',
+        NODE_ENV === 'production' ? JWT_SECRET : BISSecret,
         { expiresIn: '7d' },
       );
 

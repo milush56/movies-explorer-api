@@ -1,31 +1,28 @@
 require('dotenv').config();
 const express = require('express');
 
-const { PORT = 3000, BASE_PATH } = process.env;
+const {
+  NODE_ENV, PORT = 3000, BASE_PATH, MONGO_ENV,
+} = process.env;
 const mongoose = require('mongoose');
 
 const app = express();
 const bodyParser = require('body-parser');
 const { errors } = require('celebrate');
-/* const apiRequestLimiter = require('./middlewares/limit'); */
-const rateLimit = require('express-rate-limit');
+const apiRequestLimiter = require('./middlewares/limit');
 const { requestLogger, errorLogger } = require('./middlewares/logger');
 const router = require('./routes');
+const mongoUrl = require('./utils/utils');
 
-const apiRequestLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000,
-  max: 5,
-});
+app.use(requestLogger);
 app.use(apiRequestLimiter);
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-mongoose.connect('mongodb://localhost:27017/moviesdb', {
+mongoose.connect(NODE_ENV === 'production' ? MONGO_ENV : mongoUrl, {
   useNewUrlParser: true,
 });
-
-app.use(requestLogger);
 
 app.use(router);
 
@@ -33,7 +30,8 @@ app.use(errorLogger);
 
 app.use(errors());
 
-app.use((err, req, res) => {
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
   const { statusCode = 500, message } = err;
 
   res.status(statusCode).send({
