@@ -9,11 +9,13 @@ const mongoose = require('mongoose');
 const app = express();
 const bodyParser = require('body-parser');
 const { errors } = require('celebrate');
+const helmet = require('helmet');
 const apiRequestLimiter = require('./middlewares/limit');
 const { requestLogger, errorLogger } = require('./middlewares/logger');
 const router = require('./routes');
 const mongoUrl = require('./utils/utils');
 
+app.use(helmet());
 app.use(requestLogger);
 app.use(apiRequestLimiter);
 

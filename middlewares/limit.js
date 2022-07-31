@@ -5,6 +5,4 @@ const apiRequestLimiter = rateLimit({
   max: 5,
 });
 
-module.exports = {
-  apiRequestLimiter,
-};
+module.exports = apiRequestLimiter;
