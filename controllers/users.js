@@ -5,7 +5,6 @@ require('dotenv').config();
 const NotFoundError = require('../errors/not-found-err');
 const ConflictError = require('../errors/conflict');
 const BadRequestError = require('../errors/badrequest');
-const BISSecret = require('../utils/utils');
 
 const { NODE_ENV, JWT_SECRET } = process.env;
 
@@ -17,16 +16,7 @@ module.exports.getCurrentUser = (req, res, next) => {
       }
       res.send(user);
     })
-    .catch((err) => {
-      if (err.name === 'CastError') {
-        next(
-          new BadRequestError(
-            'Переданы некорректные данные при запросе пользователя',
-          ),
-        );
-      }
-      next(err);
-    });
+    .catch(next);
 };
 
 module.exports.newUser = (req, res, next) => {
@@ -42,7 +32,7 @@ module.exports.newUser = (req, res, next) => {
       return User.findByIdAndUpdate(
         req.user._id,
         { name, email },
-        { new: true, runValidators: true, upsert: true },
+        { new: true, runValidators: true, upsert: false },
       );
     })
     .then((user) => {
@@ -58,8 +48,9 @@ module.exports.newUser = (req, res, next) => {
             'Переданы некорректные данные при создании пользователя',
           ),
         );
+      } else {
+        next(err);
       }
-      next(err);
     });
 };
 
@@ -73,50 +64,43 @@ module.exports.login = (req, res) => {
       }
       const token = jwt.sign(
         { _id: user._id },
-        NODE_ENV === 'production' ? JWT_SECRET : BISSecret,
+        NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret',
         { expiresIn: '7d' },
       );
 
       res.send({ token });
     })
     .catch(() => {
-      res.status(401).send({ message: 'Неправильные почта или пароль' });
+      throw new BadRequestError('Неправильные почта или пароль');
     });
 };
 
 module.exports.createUser = (req, res, next) => {
   const { name, email, password } = req.body;
-
-  if (!email || !password) {
-    throw new BadRequestError('Введите верный Email или пароль');
-  }
-  return User.findOne({ email })
-    .then((user) => {
-      if (user) {
-        throw new ConflictError(
-          'Пользователь с указанным email уже существует',
-        );
-      }
-      return bcrypt.hash(req.body.password, 10);
-    })
+  bcrypt
+    .hash(password, 10)
     .then((hash) => User.create({
       name,
-      email: req.body.email,
+      email,
       password: hash,
-    }))
-    .then((user) => res.send({
-      name: user.name,
-      email: user.email,
-      _id: user._id,
-    }))
-    .catch((err) => {
-      if (err.name === 'ValidationError') {
-        next(
-          new BadRequestError(
+    })
+      .then((user) => {
+        const newUser = user.toObject();
+        delete newUser.password;
+        res.send(newUser);
+      })
+      .catch((err) => {
+        if (err.name === 'ValidationError') {
+          throw new BadRequestError(
             'Переданы некорректные данные при создании пользователя',
-          ),
-        );
-      }
-      next(err);
-    });
+          );
+        }
+        if (err.code === 11000) {
+          throw new ConflictError(
+            'Пользователь с указанным email уже существует',
+          );
+        }
+        return next(err);
+      }))
+    .catch(next);
 };

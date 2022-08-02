@@ -46,24 +46,22 @@ module.exports.createMovie = (req, res, next) => {
             'Переданы некорректные данные при создании фильма',
           ),
         );
+      } else {
+        next(err);
       }
-      next(err);
     });
 };
 
 module.exports.deleteMovie = (req, res, next) => {
   Movie.findById(req.params.movieId)
     .then((movie) => {
+      if (!movie) {
+        throw new NotFoundError('Фильм с указанным _id не найден.');
+      }
       if (req.user._id !== movie.owner._id.toString()) {
         throw new ForbiddenError('Доступ запрещен.');
       }
       return Movie.findByIdAndRemove(req.params.movieId);
-    })
-    .then((movie) => {
-      if (!movie) {
-        throw new NotFoundError('Фильм с указанным _id не найден.');
-      }
-      res.send(movie);
     })
     .catch((err) => {
       if (err.name === 'CastError') {
@@ -72,7 +70,8 @@ module.exports.deleteMovie = (req, res, next) => {
             'Переданы некорректные данные при удалении фильма.',
           ),
         );
+      } else {
+        next(err);
       }
-      next(err);
     });
 };
