@@ -22,14 +22,11 @@ module.exports.getCurrentUser = (req, res, next) => {
 module.exports.newUser = (req, res, next) => {
   const { name, email } = req.body;
 
-  User.findOne({ email })
-    .then(() => {
-      User.findByIdAndUpdate(
-        req.user._id,
-        { name, email },
-        { new: true, runValidators: true, upsert: false },
-      );
-    })
+  User.findByIdAndUpdate(
+    req.user._id,
+    { name, email },
+    { new: true, runValidators: true, upsert: false },
+  )
     .then((user) => {
       if (!user) {
         throw new NotFoundError('Пользователь по указанному _id не найден.');
@@ -74,28 +71,30 @@ module.exports.createUser = (req, res, next) => {
   const { name, email, password } = req.body;
   bcrypt
     .hash(password, 10)
-    .then((hash) => User.create({
-      name,
-      email,
-      password: hash,
-    })
-      .then((user) => {
-        const newUser = user.toObject();
-        delete newUser.password;
-        res.send(newUser);
+    .then((hash) =>
+      User.create({
+        name,
+        email,
+        password: hash,
       })
-      .catch((err) => {
-        if (err.name === 'ValidationError') {
-          throw new BadRequestError(
-            'Переданы некорректные данные при создании пользователя',
-          );
-        }
-        if (err.code === 11000) {
-          throw new ConflictError(
-            'Пользователь с указанным email уже существует',
-          );
-        }
-        return next(err);
-      }))
+        .then((user) => {
+          const newUser = user.toObject();
+          delete newUser.password;
+          res.send(newUser);
+        })
+        .catch((err) => {
+          if (err.name === 'ValidationError') {
+            throw new BadRequestError(
+              'Переданы некорректные данные при создании пользователя',
+            );
+          }
+          if (err.code === 11000) {
+            throw new ConflictError(
+              'Пользователь с указанным email уже существует',
+            );
+          }
+          return next(err);
+        }),
+    )
     .catch(next);
 };
