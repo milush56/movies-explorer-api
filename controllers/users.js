@@ -23,13 +23,8 @@ module.exports.newUser = (req, res, next) => {
   const { name, email } = req.body;
 
   User.findOne({ email })
-    .then((user) => {
-      if (user) {
-        throw new ConflictError(
-          'Пользователь с указанным email уже существует',
-        );
-      }
-      return User.findByIdAndUpdate(
+    .then(() => {
+      User.findByIdAndUpdate(
         req.user._id,
         { name, email },
         { new: true, runValidators: true, upsert: false },

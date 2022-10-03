@@ -9,8 +9,8 @@ router.post(
   '/',
   celebrate({
     body: Joi.object().keys({
-      country: Joi.string().required().min(3).max(74),
-      director: Joi.string().required().min(2).max(30),
+      country: Joi.string().required().min(2).max(500),
+      director: Joi.string().required().min(2).max(500),
       duration: Joi.number().required(),
       year: Joi.string().required(),
       description: Joi.string().required(),
