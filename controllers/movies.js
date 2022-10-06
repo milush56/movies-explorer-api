@@ -57,21 +57,23 @@ module.exports.deleteMovie = (req, res, next) => {
     .then((movie) => {
       if (!movie) {
         throw new NotFoundError('Фильм с указанным _id не найден.');
-      }
-      if (req.user._id !== movie.owner._id.toString()) {
-        throw new ForbiddenError('Доступ запрещен.');
-      }
-      return Movie.findByIdAndRemove(req.params.movieId);
-    })
-    .catch((err) => {
-      if (err.name === 'CastError') {
-        next(
-          new BadRequestError(
-            'Переданы некорректные данные при удалении фильма.',
-          ),
-        );
+      } else if (movie.owner._id.toString() === req.user._id) {
+        Movie.findByIdAndRemove(req.params.movieId)
+          .then((removedMovie) => {
+            res.send(removedMovie);
+          })
+          .catch((error) => {
+            if (error.name === 'CastError') {
+              throw new NotFoundError('Фильм с указанным _id не найден.');
+            } else {
+              next(error);
+            }
+          });
       } else {
-        next(err);
+        throw new ForbiddenError(
+          'Доступ запрещен.',
+        );
       }
-    });
+    })
+    .catch(next);
 };
